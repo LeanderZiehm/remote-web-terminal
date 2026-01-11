@@ -1,0 +1,40 @@
+<div id="terminal"></div>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" rel="stylesheet">
+
+<script>
+  const term = new Terminal();
+  term.open(document.getElementById('terminal'));
+
+  // In Docker Compose, backend is the service name
+  const socket = new WebSocket("ws://localhost:8000/ws");
+
+  let command = ''; // buffer user input
+
+  socket.addEventListener("open", () => {
+    term.write('Connected!\r\n$ ');
+  });
+
+  socket.addEventListener("message", (event) => {
+    term.write(event.data.replace(/\n/g, '\r\n'));
+  });
+
+  term.onData(e => {
+    switch (e) {
+      case '\r': // Enter
+        term.write('\r\n');          // move to next line
+        socket.send(command);        // send full command to backend
+        command = '';                // reset buffer
+        break;
+      case '\u007F': // Backspace
+        if (command.length > 0) {
+          command = command.slice(0, -1);
+          term.write('\b \b');      // erase char from terminal
+        }
+        break;
+      default:
+        command += e;
+        term.write(e);
+    }
+  });
+</script>
